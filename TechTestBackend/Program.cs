@@ -1,16 +1,24 @@
 using Microsoft.EntityFrameworkCore;
-using TechTestBackend;
+using TechTestBackend.Business;
+using TechTestBackend.Business.Abstraction;
+using TestTestBackend.Data;
+using TestTestBackend.Data.Repositories;
+using TestTestBackend.Data.Repositories.Abstraction;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+builder.Configuration.AddJsonFile("appsettings.local.json", false);
 
+// Add services to the container.
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddDbContextFactory<SongstorageContext>(options => options.UseInMemoryDatabase("Songstorage"));
+builder.Services.AddDbContextFactory<SongStorageContext>(options => options.UseInMemoryDatabase("SongStorage"));
+
+builder.Services.AddSingleton<ISpotifyService, SpotifyService>();
+builder.Services.AddScoped<ISpotifyApiClient, SpotifyApiClient>();
+builder.Services.AddScoped<ISongStorageRepository, SongStorageRepository>();
 
 var app = builder.Build();
 
