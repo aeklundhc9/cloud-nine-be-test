@@ -37,3 +37,6 @@ Expect this test to take around 2-4 hours to finish.
 
 ## Delivery
 Please provide a link to your repository when you are done with the test.
+
+## Number of 🍻
+🍺
