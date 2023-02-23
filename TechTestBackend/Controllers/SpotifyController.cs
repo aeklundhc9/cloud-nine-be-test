@@ -1,7 +1,5 @@
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using TechTestBackend.Business.Abstraction;
-using TestTestBackend.Data;
 using TestTestBackend.Data.Models;
 using TestTestBackend.Data.Repositories.Abstraction;
 
@@ -32,13 +30,13 @@ public class SpotifyController : ControllerBase
 
     [HttpGet]
     [Route(SearchTracksRouteFragment)]
-    public IActionResult SearchTracks(string name)
+    public async Task<IActionResult> SearchTracks(string name)
     {
         try
         {
-            var apiModel = _spotifyApiClient.GetTracks(name);
+            var apiModels = await _spotifyApiClient.SearchForSongsByName(name);
 
-            return Ok(apiModel);
+            return Ok(apiModels);
         }
         catch (Exception)
         {
@@ -49,12 +47,12 @@ public class SpotifyController : ControllerBase
 
     [HttpPost]
     [Route(LikeRouteFragment)]
-    public IActionResult Like(string id)
+    public async Task<IActionResult> Like(string id)
     {
         if (!_spotifyService.IdIsSpotifyLength(id))
             return BadRequest();
 
-        var track = _spotifyApiClient.GetTrack(id);
+        var track = await _spotifyApiClient.GetSong(id);
         if (track == null)
         {
             // TODO Return 400
@@ -68,7 +66,7 @@ public class SpotifyController : ControllerBase
                 Id = id,
                 Name = track.Name
             };
-            _songStorageRepository.AddSongToLikes(song);
+            await _songStorageRepository.AddSongToLikes(song);
         }
         catch (ArgumentException)
         {

@@ -7,18 +7,18 @@ using TestTestBackend.Data.Repositories.Abstraction;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+builder.Configuration.AddJsonFile("appsettings.local.json", false);
 
+// Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddDbContextFactory<SongStorageContext>(options => options.UseInMemoryDatabase("SongStorage"));
 
-builder.Services.AddScoped<ISpotifyService, SpotifyService>();
+builder.Services.AddSingleton<ISpotifyService, SpotifyService>();
 builder.Services.AddScoped<ISpotifyApiClient, SpotifyApiClient>();
 builder.Services.AddScoped<ISongStorageRepository, SongStorageRepository>();
-
 
 var app = builder.Build();
 

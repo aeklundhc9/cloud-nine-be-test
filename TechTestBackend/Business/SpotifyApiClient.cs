@@ -8,49 +8,61 @@ namespace TechTestBackend.Business;
 
 public class SpotifyApiClient : ISpotifyApiClient
 {
-    public IEnumerable<SpotifySong> GetTracks(string name)
-    {
-        var client = new HttpClient();
-        var c_id = "996d0037680544c987287a9b0470fdbb";
-        var c_s = "5a3c92099a324b8f9e45d77e919fec13";
-        var e = Encoding.ASCII.GetBytes($"{c_id}:{c_s}");
-        var base64 = Convert.ToBase64String(e);
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64);
-        
-        var password = client.PostAsync("https://accounts.spotify.com/api/token", new FormUrlEncodedContent(new [] { new KeyValuePair<string, string>("grant_type", "client_credentials") })).Result;
-        dynamic Password_content = JsonConvert.DeserializeObject(password.Content.ReadAsStringAsync().Result);
-        
-        client = new HttpClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Password_content.access_token.ToString());
-        
-        var response = client.GetAsync("https://api.spotify.com/v1/search?q=" + name + "&type=track").Result;
-        dynamic objects = JsonConvert.DeserializeObject(response.Content.ReadAsStringAsync().Result);
+    private readonly IConfiguration _configuration;
+    private const string SpotifyV1ApiBaseUrl = "https://api.spotify.com/v1";
 
-        var songs = JsonConvert.DeserializeObject<SpotifySong[]>(objects.tracks.items.ToString());
-        
+    public SpotifyApiClient(IConfiguration configuration)
+    {
+        _configuration = configuration;
+    }
+
+    public async Task<IEnumerable<SpotifySong>> SearchForSongsByName(string name)
+    {
+        var client = await GetSpotifyAuthenticatedClient();
+        var response = await client.GetAsync($"{SpotifyV1ApiBaseUrl}/search?q={name}&type=track");
+        dynamic deserializedObjects = JsonConvert.DeserializeObject(await response.Content.ReadAsStringAsync())!;
+
+        var songs = JsonConvert.DeserializeObject<SpotifySong[]>(deserializedObjects.tracks.items.ToString());
+
         return songs;
     }
 
-    public SpotifySong GetTrack(string id)
+    public async Task<SpotifySong?> GetSong(string id)
     {
-        var client = new HttpClient();
-        var c_id = "996d0037680544c987287a9b0470fdbb";
-        var c_s = "5a3c92099a324b8f9e45d77e919fec13";
-        var e = Encoding.ASCII.GetBytes($"{c_id}:{c_s}");
-        var base64 = Convert.ToBase64String(e);
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64);
-        
-        var password = client.PostAsync("https://accounts.spotify.com/api/token", new FormUrlEncodedContent(new [] { new KeyValuePair<string, string>("grant_type", "client_credentials") })).Result;
-        dynamic Password_content = JsonConvert.DeserializeObject(password.Content.ReadAsStringAsync().Result);
-        
-        client = new HttpClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Password_content.access_token.ToString());
-        
-        var response = client.GetAsync("https://api.spotify.com/v1/tracks/" + id + "/").Result;
-        dynamic objects = JsonConvert.DeserializeObject(response.Content.ReadAsStringAsync().Result);
+        var client = await GetSpotifyAuthenticatedClient();
+
+        var response = await client.GetAsync($"{SpotifyV1ApiBaseUrl}/tracks/{id}/");
+        dynamic objects = JsonConvert.DeserializeObject(await response.Content.ReadAsStringAsync())!;
 
         var song = JsonConvert.DeserializeObject<SpotifySong>(objects.ToString());
-        
+
         return song;
+    }
+
+    private async Task<HttpClient> GetSpotifyAuthenticatedClient()
+    {
+        var clientId = _configuration.GetValue<string>("TechTestBackend:Spotify:ClientId");
+        var clientSecret = _configuration.GetValue<string>("TechTestBackend:Spotify:ClientSecret");
+        if (clientId == null || clientSecret == null)
+            throw new Exception("Missing client ID or secret from configuration");
+
+        var base64EncodedCredentials = GetBase64EncodedCredentials(clientId, clientSecret);
+
+        var client = new HttpClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodedCredentials);
+
+        var accessTokenResponse = await client.PostAsync("https://accounts.spotify.com/api/token", new FormUrlEncodedContent(new[] { new KeyValuePair<string, string>("grant_type", "client_credentials") }));
+        dynamic deserializedTokenResponse = JsonConvert.DeserializeObject(await accessTokenResponse.Content.ReadAsStringAsync())!;
+        if (deserializedTokenResponse == null)
+            throw new Exception("Could not retrieve bearer token from Spotify");
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", deserializedTokenResponse.access_token.ToString());
+        return client;
+    }
+
+    private static string GetBase64EncodedCredentials(string clientId, string clientSecret)
+    {
+        var asciiEncodedCredentials = Encoding.ASCII.GetBytes($"{clientId}:{clientSecret}");
+        return Convert.ToBase64String(asciiEncodedCredentials);
     }
 }
