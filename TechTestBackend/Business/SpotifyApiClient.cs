@@ -1,12 +1,14 @@
 ﻿using System.Net.Http.Headers;
 using System.Text;
 using Newtonsoft.Json;
+using TechTestBackend.Business.Abstraction;
+using TestTestBackend.Data.Models;
 
-namespace TechTestBackend;
+namespace TechTestBackend.Business;
 
-public static class SpotifyHelper
+public class SpotifyApiClient : ISpotifyApiClient
 {
-    public static SpotifySong[] GetTracks(string name)
+    public IEnumerable<SpotifySong> GetTracks(string name)
     {
         var client = new HttpClient();
         var c_id = "996d0037680544c987287a9b0470fdbb";
@@ -29,7 +31,7 @@ public static class SpotifyHelper
         return songs;
     }
 
-    public static SpotifySong GetTrack(string id)
+    public SpotifySong GetTrack(string id)
     {
         var client = new HttpClient();
         var c_id = "996d0037680544c987287a9b0470fdbb";

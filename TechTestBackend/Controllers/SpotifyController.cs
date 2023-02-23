@@ -1,9 +1,9 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System.Collections.ObjectModel;
-using System.Linq;
-using System.Threading.Tasks;
-using MessagePack.Internal;
+using TechTestBackend.Business.Abstraction;
+using TestTestBackend.Data;
+using TestTestBackend.Data.Models;
+using TestTestBackend.Data.Repositories.Abstraction;
 
 namespace TechTestBackend.Controllers;
 
@@ -11,7 +11,9 @@ namespace TechTestBackend.Controllers;
 [Route("api/spotify")]
 public class SpotifyController : ControllerBase
 {
-    private readonly SongStorageContext _songStorageContext;
+    private readonly ISpotifyService _spotifyService;
+    private readonly ISpotifyApiClient _spotifyApiClient;
+    private readonly ISongStorageRepository _songStorageRepository;
 
     // TODO lowercase rather than camelcase
     private const string SearchTracksRouteFragment = "searchTracks";
@@ -19,9 +21,13 @@ public class SpotifyController : ControllerBase
     private const string RemoveLikeRouteFragment = "removeLike";
     private const string ListLikedRouteFragment = "listLiked";
 
-    public SpotifyController(SongStorageContext songStorageContext)
+    public SpotifyController(ISpotifyService spotifyService,
+        ISpotifyApiClient spotifyApiClient,
+        ISongStorageRepository songStorageRepository)
     {
-        _songStorageContext = songStorageContext;
+        _spotifyService = spotifyService;
+        _spotifyApiClient = spotifyApiClient;
+        _songStorageRepository = songStorageRepository;
     }
 
     [HttpGet]
@@ -30,7 +36,7 @@ public class SpotifyController : ControllerBase
     {
         try
         {
-            var apiModel = SpotifyHelper.GetTracks(name);
+            var apiModel = _spotifyApiClient.GetTracks(name);
 
             return Ok(apiModel);
         }
@@ -45,25 +51,26 @@ public class SpotifyController : ControllerBase
     [Route(LikeRouteFragment)]
     public IActionResult Like(string id)
     {
-        var track = SpotifyHelper.GetTrack(id); //check if trak exists
-        if (SpotifyId(id) == false)
-        {
-            return StatusCode(400);
-        }
+        if (!_spotifyService.IdIsSpotifyLength(id))
+            return BadRequest();
 
-        var song = new SpotifySong(); //create new song
-        song.Id = id;
-        song.Name = track.Name;
+        var track = _spotifyApiClient.GetTrack(id);
+        if (track == null)
+        {
+            // TODO Return 400
+            return Ok();
+        }
 
         try
         {
-            //crashes sometimes for some reason
-            // we   have to look into this
-            // 😢😢😢😢
-            _songStorageContext.Songs.Add(song);
-            _songStorageContext.SaveChanges();
+            var song = new SpotifySong
+            {
+                Id = id,
+                Name = track.Name
+            };
+            _songStorageRepository.AddSongToLikes(song);
         }
-        catch (Exception e)
+        catch (ArgumentException)
         {
             // not sure if this is the best way to handle this
             // It ain't, but we're keeping it for compatibility for now
@@ -77,100 +84,19 @@ public class SpotifyController : ControllerBase
     [Route(RemoveLikeRouteFragment)]
     public IActionResult RemoveLike(string id)
     {
-        var track = SpotifyHelper.GetTrack(id);
-        if (SpotifyId(id) == false)
-        {
-            return StatusCode(400); // bad request wrong id not existing in spotify
-            // Du tänjer på mitt tålamod 😿😿
-        }
+        if (!_spotifyService.IdIsSpotifyLength(id))
+            return BadRequest();
 
-        var song = new SpotifySong
-        {
-            Id = id
-        };
-
-        try
-        {
-            _songStorageContext.Songs.Remove(song); // this is not working every tume
-            _songStorageContext.SaveChanges();
-        }
-        catch (Exception)
-        {
-            // TODO Allow other status codes along with FE
-            // Vad fn Hannes varför får jag inte ändra API-beteendet för
-            return Ok();
-        }
+        _songStorageRepository.RemoveSongFromLikes(id);
 
         return Ok();
     }
 
     [HttpGet]
     [Route(ListLikedRouteFragment)]
-    public IActionResult ListLiked()
+    public async Task<IActionResult> ListLiked()
     {
-        var songCount = _songStorageContext.Songs.Count();
-        var songs = new List<SpotifySong>();
-
-        // TODO Return 400 on invalid IDs
-        if (songCount > 0)
-        {
-            for (var i = 0; i <= songCount - 1; i++)
-            {
-                var songId = _songStorageContext
-                    .Songs.ToList()[i].Id;
-
-                var track = SpotifyHelper.GetTrack(songId);
-                if (track.Id == null)
-                {
-                    // TODO: remove song from database, but not sure how
-                }
-                else
-                {
-                    // not working for some reason so we have to do the check manually for now
-                    // if(SongExists(track.Id) == false)
-
-                    int numerofsong = songs.Count();
-                    for (int num = 0; num <= numerofsong; num++)
-                    {
-                        try
-                        {
-                            if (songs[num].Id == songId)
-                            {
-                                break;
-                            }
-                            else if (num == numerofsong - 1)
-                            {
-                                for (var id = 0; id < numerofsong; id++)
-                                {
-                                    if (songs[id].Name == track.Name)
-                                    {
-                                        break; // we dont want to add the same song twice
-                                        //does this break work?
-                                    }
-                                    else if (id == numerofsong - 1)
-                                    {
-                                        songs.Add(_songStorageContext.Songs.ToList()[i]);
-                                    }
-                                }
-                            }
-                        }
-                        catch (Exception e)
-                        {
-                            // something went wrong, but it's not important
-                            // du får snart humormedalj för det här
-                            songs.Add(_songStorageContext.Songs.ToList()[i]);
-                        }
-                    }
-                }
-            }
-        }
-
-        //save the changes, just in case
-        // jag tar tillbaka det
-        _songStorageContext.SaveChanges();
-
-        return Ok(songs);
+        var likedSongs = await _songStorageRepository.GetLikedSongs();
+        return Ok(likedSongs);
     }
-
-    private static bool SpotifyId(string id) => id.Length == 22;
 }
