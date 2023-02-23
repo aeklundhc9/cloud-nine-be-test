@@ -2,12 +2,11 @@
 
 namespace TechTestBackend;
 
-public class SongstorageContext : DbContext
+public class SongStorageContext : DbContext
 {
-    public SongstorageContext(DbContextOptions<SongstorageContext> options)
+    public SongStorageContext(DbContextOptions<SongStorageContext> options)
         : base(options)
-    {
-    }
+    { }
 
-    public DbSet<Soptifysong> Songs { get; set; }
+    public DbSet<SpotifySong> Songs { get; set; }
 }
