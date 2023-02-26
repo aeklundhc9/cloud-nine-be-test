@@ -13,6 +13,8 @@ public class SpotifyApiClient : ISpotifyApiClient
     private readonly IConfiguration _configuration;
     private const string SpotifyV1ApiBaseUrl = "https://api.spotify.com/v1";
 
+    // TODO The API client should handle things like too many requests from Spotify with a policy
+
     public SpotifyApiClient(IConfiguration configuration)
     {
         _configuration = configuration;
