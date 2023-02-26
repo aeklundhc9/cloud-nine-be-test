@@ -17,6 +17,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\TechTestBackend.Spotify\TechTestBackend.Spotify.csproj" />
       <ProjectReference Include="..\TestTestBackend.Data\TestTestBackend.Data.csproj" />
     </ItemGroup>
 

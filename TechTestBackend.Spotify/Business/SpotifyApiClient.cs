@@ -1,11 +1,12 @@
 ﻿using System.Net.Http.Headers;
 using System.Text;
+using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
-using TechTestBackend.Business.Abstraction;
-using TechTestBackend.Integration;
+using TechTestBackend.Spotify.Business.Abstraction;
+using TechTestBackend.Spotify.Integration;
 using TestTestBackend.Data.Models;
 
-namespace TechTestBackend.Business;
+namespace TechTestBackend.Spotify.Business;
 
 public class SpotifyApiClient : ISpotifyApiClient
 {

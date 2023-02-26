@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using TechTestBackend.Business.Abstraction;
+using TechTestBackend.Spotify.Business.Abstraction;
 using TestTestBackend.Data.Models;
 using TestTestBackend.Data.Repositories.Abstraction;
 

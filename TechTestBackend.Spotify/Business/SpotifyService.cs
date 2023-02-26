@@ -1,6 +1,6 @@
-﻿using TechTestBackend.Business.Abstraction;
+﻿using TechTestBackend.Spotify.Business.Abstraction;
 
-namespace TechTestBackend.Business;
+namespace TechTestBackend.Spotify.Business;
 
 public class SpotifyService : ISpotifyService
 {

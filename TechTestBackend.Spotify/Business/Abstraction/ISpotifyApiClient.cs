@@ -1,6 +1,6 @@
 ﻿using TestTestBackend.Data.Models;
 
-namespace TechTestBackend.Business.Abstraction;
+namespace TechTestBackend.Spotify.Business.Abstraction;
 
 public interface ISpotifyApiClient
 {

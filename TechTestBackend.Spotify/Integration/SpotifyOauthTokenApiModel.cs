@@ -1,7 +1,8 @@
 ﻿using Newtonsoft.Json;
+
 #pragma warning disable CS8618
 
-namespace TechTestBackend.Integration;
+namespace TechTestBackend.Spotify.Integration;
 
 public class SpotifyOauthTokenApiModel
 {
