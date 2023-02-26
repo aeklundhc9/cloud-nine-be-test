@@ -1,15 +1,19 @@
 ﻿using System.Net.Http.Headers;
 using System.Text;
+using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
-using TechTestBackend.Business.Abstraction;
+using TechTestBackend.Spotify.Business.Abstraction;
+using TechTestBackend.Spotify.Integration;
 using TestTestBackend.Data.Models;
 
-namespace TechTestBackend.Business;
+namespace TechTestBackend.Spotify.Business;
 
 public class SpotifyApiClient : ISpotifyApiClient
 {
     private readonly IConfiguration _configuration;
     private const string SpotifyV1ApiBaseUrl = "https://api.spotify.com/v1";
+
+    // TODO The API client should handle things like too many requests from Spotify with a policy
 
     public SpotifyApiClient(IConfiguration configuration)
     {
@@ -20,11 +24,13 @@ public class SpotifyApiClient : ISpotifyApiClient
     {
         var client = await GetSpotifyAuthenticatedClient();
         var response = await client.GetAsync($"{SpotifyV1ApiBaseUrl}/search?q={name}&type=track");
-        dynamic deserializedObjects = JsonConvert.DeserializeObject(await response.Content.ReadAsStringAsync())!;
+        var deserializedObjects = JsonConvert.DeserializeObject<SpotifySearchApiModel>(await response.Content.ReadAsStringAsync());
 
-        var songs = JsonConvert.DeserializeObject<SpotifySong[]>(deserializedObjects.tracks.items.ToString());
-
-        return songs;
+        return deserializedObjects?.Tracks.Items.Select(x => new SpotifySong()
+        {
+            Name = x.Name,
+            Id = x.Id
+        }) ?? Enumerable.Empty<SpotifySong>();
     }
 
     public async Task<SpotifySong?> GetSong(string id)
@@ -32,11 +38,15 @@ public class SpotifyApiClient : ISpotifyApiClient
         var client = await GetSpotifyAuthenticatedClient();
 
         var response = await client.GetAsync($"{SpotifyV1ApiBaseUrl}/tracks/{id}/");
-        dynamic objects = JsonConvert.DeserializeObject(await response.Content.ReadAsStringAsync())!;
+        var spotifyTrackApiModels = JsonConvert.DeserializeObject<SpotifyTrackApiModel>(await response.Content.ReadAsStringAsync());
+        if (spotifyTrackApiModels == null)
+            return null;
 
-        var song = JsonConvert.DeserializeObject<SpotifySong>(objects.ToString());
-
-        return song;
+        return new SpotifySong
+        {
+            Id = spotifyTrackApiModels.Id,
+            Name = spotifyTrackApiModels.Name
+        };
     }
 
     private async Task<HttpClient> GetSpotifyAuthenticatedClient()
@@ -51,12 +61,15 @@ public class SpotifyApiClient : ISpotifyApiClient
         var client = new HttpClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodedCredentials);
 
-        var accessTokenResponse = await client.PostAsync("https://accounts.spotify.com/api/token", new FormUrlEncodedContent(new[] { new KeyValuePair<string, string>("grant_type", "client_credentials") }));
-        dynamic deserializedTokenResponse = JsonConvert.DeserializeObject(await accessTokenResponse.Content.ReadAsStringAsync())!;
-        if (deserializedTokenResponse == null)
+        var accessTokenResponse = await client.PostAsync("https://accounts.spotify.com/api/token",
+            new FormUrlEncodedContent(new[] { new KeyValuePair<string, string>("grant_type", "client_credentials") }));
+        var deserializedTokenResponse = JsonConvert.DeserializeObject<SpotifyOauthTokenApiModel>(await accessTokenResponse.Content.ReadAsStringAsync());
+        
+        // TODO Should check for a header here instead
+        if (string.IsNullOrEmpty(deserializedTokenResponse?.AccessToken))
             throw new Exception("Could not retrieve bearer token from Spotify");
 
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", deserializedTokenResponse.access_token.ToString());
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", deserializedTokenResponse.AccessToken);
         return client;
     }
 

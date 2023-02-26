@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using TechTestBackend.Business;
-using TechTestBackend.Business.Abstraction;
+using TechTestBackend.Spotify.Business;
+using TechTestBackend.Spotify.Business.Abstraction;
 using TestTestBackend.Data;
 using TestTestBackend.Data.Repositories;
 using TestTestBackend.Data.Repositories.Abstraction;
